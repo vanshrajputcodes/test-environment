@@ -88,6 +88,25 @@ export function ExamScreen({ candidate, questions, onFinish }: ExamScreenProps) 
   const [submitting, setSubmitting] = useState(false);
   const [remainingMs, setRemainingMs] = useState(examDurationMs);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [resultsHeight, setResultsHeight] = useState(220);
+
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = resultsHeight;
+    const onMove = (ev: PointerEvent) => {
+      const max = Math.max(160, window.innerHeight * 0.65);
+      setResultsHeight(Math.min(max, Math.max(110, startH + (startY - ev.clientY))));
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    document.body.style.cursor = "row-resize";
+  };
 
   const submittingRef = useRef(false);
   const doSubmitRef = useRef<(terminated: boolean) => void>(() => {});
@@ -429,7 +448,19 @@ export function ExamScreen({ candidate, questions, onFinish }: ExamScreenProps) 
             className="min-h-0 flex-1 resize-none border-b bg-code-bg p-4 font-code text-[13px] leading-relaxed text-foreground outline-none"
           />
 
-          <div className="min-h-[180px] shrink-0 overflow-y-auto p-3">
+          {/* Drag to resize the results pane */}
+          <div
+            onPointerDown={startResize}
+            className="flex h-2.5 shrink-0 cursor-row-resize items-center justify-center bg-card"
+            title="Drag to resize the results panel"
+          >
+            <div className="h-0.5 w-12 rounded-full bg-muted-foreground/40 transition-colors hover:bg-muted-foreground/70" />
+          </div>
+
+          <div
+            className="shrink-0 overflow-y-auto p-3"
+            style={{ height: `${resultsHeight}px` }}
+          >
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Results
             </div>

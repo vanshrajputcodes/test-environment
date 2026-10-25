@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Timer, ListChecks, Camera, Wifi, MonitorX, Laptop } from "lucide-react";
-import htfLogo from "@/assets/hack-the-future-logo.png.asset.json";
+const LOGO_URL = "https://vanshrajput.in/wp-content/uploads/2026/08/Hack-The-Future.png";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,9 +156,9 @@ export function AssessmentApp() {
     <div className="relative z-10 mx-auto grid min-h-screen max-w-5xl items-center gap-10 px-4 py-10 lg:grid-cols-2">
       <div>
         <img
-          src={htfLogo.url}
+          src={LOGO_URL}
           alt="Hack The Future"
-          className="mb-5 h-16 w-auto"
+          className="mb-5 h-24 w-auto"
         />
         <div className="mb-6 flex items-center gap-3">
           <div>

@@ -1,12 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { BadgeCheck, ShieldAlert, Printer } from "lucide-react";
+import { BadgeCheck, ShieldAlert, Printer, FileSpreadsheet, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { APP } from "@/lib/assessment/config";
 import { decodePayload } from "@/lib/assessment/payload";
 import type { FinalPayload } from "@/components/assessment/assessment-app";
+import {
+  loadResults,
+  saveResult,
+  removeResult,
+  clearResults,
+  buildResultRows,
+  buildQuestionRows,
+  downloadBlob,
+  type StoredResult,
+} from "@/lib/assessment/results-store";
 
 export const Route = createFileRoute("/result-checker-icc")({
   head: () => ({
@@ -27,6 +38,11 @@ function ResultChecker() {
   const [payload, setPayload] = useState<FinalPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [saved, setSaved] = useState<StoredResult[]>([]);
+
+  useEffect(() => {
+    setSaved(loadResults());
+  }, []);
 
   const verify = async () => {
     setVerifying(true);
@@ -37,12 +53,30 @@ function ResultChecker() {
       if (!p || typeof p.totalMarks !== "number" || !Array.isArray(p.perQuestion)) {
         throw new Error("Unrecognized result payload.");
       }
+      const wasNew = !saved.some((r) => r.payload.attemptId === p.attemptId);
+      setSaved(saveResult(p, saved));
       setPayload(p);
+      setCode("");
+      toast.success(wasNew ? "Result saved to the local sheet" : "Saved result updated");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not verify this code.");
     } finally {
       setVerifying(false);
     }
+  };
+
+  const exportExcel = async () => {
+    if (saved.length === 0) return;
+    const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(buildResultRows(saved)), "Results");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(buildQuestionRows(saved)), "Questions");
+    const out = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
+    const blob = new Blob([out], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const date = new Date().toISOString().slice(0, 10);
+    downloadBlob(blob, `ICC-Results-${date}.xlsx`);
   };
 
   const certificateEligible =
@@ -94,7 +128,8 @@ function ResultChecker() {
           <div>
             <h1 className="text-xl font-bold tracking-tight">Result code verification</h1>
             <p className="text-xs text-muted-foreground">
-              Paste a candidate&apos;s encrypted result code to verify and inspect it.
+              Paste a candidate&apos;s encrypted result code to verify and inspect it. Each verified
+              result is saved in this browser only.
             </p>
           </div>
         </div>
@@ -217,6 +252,83 @@ function ResultChecker() {
           </div>
         )}
       </div>
+
+      {saved.length > 0 && (
+        <div className="mt-6 rounded-lg border bg-card p-6 shadow-xl sm:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Saved results</h2>
+              <p className="text-xs text-muted-foreground">
+                {saved.length} candidate{saved.length === 1 ? "" : "s"} stored in this browser ·
+                nothing leaves your device until you export
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={exportExcel} size="sm">
+                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+                Download Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  clearResults();
+                  setSaved([]);
+                  toast.success("Local sheet cleared");
+                }}
+              >
+                <Trash2 className="mr-1.5 h-4 w-4" />
+                Clear all
+              </Button>
+            </div>
+          </div>
+          <ul className="mt-4 divide-y rounded-md border">
+            {saved.map((r) => {
+              const p = r.payload;
+              const totalCases = p.perQuestion.reduce((s, q) => s + q.casesTotal, 0);
+              const passedCases = p.perQuestion.reduce((s, q) => s + q.casesPassed, 0);
+              return (
+                <li key={p.attemptId} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{p.candidate.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {p.candidate.email} · {new Date(p.submittedAt).toLocaleString()}
+                    </div>
+                  </div>
+                  {p.terminated ? (
+                    <Badge variant="destructive" className="text-[10px]">
+                      Terminated
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Completed
+                    </Badge>
+                  )}
+                  <span className="shrink-0 font-code text-xs text-muted-foreground">
+                    {passedCases}/{totalCases} cases
+                  </span>
+                  <span className="shrink-0 font-code text-sm font-semibold text-primary">
+                    {p.totalMarks}
+                    <span className="text-xs text-muted-foreground">/{p.maxMarks}</span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 shrink-0 p-0"
+                    aria-label={`Remove ${p.candidate.name} from the local sheet`}
+                    onClick={() => {
+                      setSaved(removeResult(p.attemptId, saved));
+                      toast.success("Removed from the local sheet");
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

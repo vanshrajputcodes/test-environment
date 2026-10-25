@@ -293,13 +293,13 @@ I build web applications, AI-powered products, developer tools, and technology e
 | LinkedIn | [Vansh Raj Singh](https://www.linkedin.com/in/linkvansh/) |
 | Instagram | [@ig_vanshsingh](https://www.instagram.com/ig_vanshsingh/) |
 | YouTube | [@vanshrajputcodes](https://www.youtube.com/@vanshrajputcodes) |
-| Hack The Future | [hackthefuture.in](https://hackthefuture.in) |
+| Hack The Future | [hackthefuture.co.in](https://app.hackthefuture.co.in) |
 
 ## About Hack The Future
 
 **Hack The Future** is a technology and skill-development initiative focused on helping learners explore programming, emerging technologies, and career-building opportunities.
 
-Website: [https://hackthefuture.in](https://hackthefuture.in)
+Website: [https://hackthefuture.co.in](https://app.hackthefuture.co.in)
 
 ---
 
